@@ -3,9 +3,8 @@ package com.thomas.neuralnetwork.ai;
 import java.util.Arrays;
 
 public class Neuron {
-	private double[] connections;
+	private final double[] connections;
 	private double bias;
-	private double prevOutput = 0;
 
 	/**
 	 * Creates a new Neuron with the specified weights and biases
@@ -20,49 +19,22 @@ public class Neuron {
 
 	/**
 	 * Adds a specified amount to the bias
-	 * 
+	 *
 	 * @param addend the amount to add to the bias
-	 * @return the updated neuron
 	 */
-	public Neuron addToBias(double addend) {
+	public void addToBias(double addend) {
 		bias += addend;
-		return this;
-	}
-	
-	/**
-	 * Adds a specified number to the connection at an index
-	 * 
-	 * @param addend the amount to add to the connection
-	 * @param index the index of the connection
-	 * @return the updated neuron
-	 */
-	public Neuron addToConnection(double addend, int index) {
-		connections[index] += addend;
-		return this;
 	}
 	
 	/**
 	 * Adds the corresponding double from the addend to its connection
-	 * 
+	 *
 	 * @param addend an array of doubles to add to the connections
-	 * @return the updated neuron
 	 */
-	public Neuron addToConnections(double[] addend) {
+	public void addToConnections(double[] addend) {
 		for (int i = 0; i < connections.length; i++) {
 			connections[i] += addend[i];
 		}
-		return this;
-	}
-	
-	/**
-	 * Subtracts the specified amount from the bias
-	 * 
-	 * @param d the double to subtract from the bias
-	 * @return the updated neuron
-	 */
-	public Neuron subtractFromBias(double d) {
-		bias -= d;
-		return this;
 	}
 
 	/**
@@ -72,56 +44,6 @@ public class Neuron {
 	 */
 	public Neuron copy() {
 		return new Neuron(Arrays.copyOf(connections, connections.length), bias);
-	}
-	
-	/**
-	 * Multiplies this neuron's bias by the multiplicand
-	 * 
-	 * @param multiplicand the number to multiply the bias by
-	 * @return the updated neuron
-	 */
-	public Neuron multiplyBias(double multiplicand) {
-		bias *= multiplicand;
-		return this;
-	}
-	
-	/**
-	 * Multiplies every connection by the multiplicand
-	 * 
-	 * @param multiplicand the number to multiply the connections by
-	 * @return the updated neuron
-	 */
-	public Neuron multiplyConnections(double multiplicand) {
-		for (int i = 0; i < connections.length; i++) {
-			connections[i] *= multiplicand;
-		}
-		return this;
-	}
-	
-	/**
-	 * Multiplies every connection by its corresponding multiplicand
-	 * 
-	 * @param multiplicand the array to multiply the connections by
-	 * @return the updated neuron
-	 */
-	public Neuron multiplyConnections(double[] multiplicand) {
-		for (int i = 0; i < connections.length; i++) {
-			connections[i] *= multiplicand[i];
-		}
-		return this;
-	}
-	
-	/**
-	 * Adds the connections multiplied by the corresponding activation in the previous layer
-	 * 
-	 * @param previousActivations an array of the previous neurons activation
-	 * @return the updated neuron
-	 */
-	public Neuron weightedSum(double[] previousActivations) {
-		for (int i = 0; i < previousActivations.length; i++) {
-			bias += connections[i]*previousActivations[i];
-		}
-		return this;
 	}
 
 	/**
@@ -155,26 +77,7 @@ public class Neuron {
 	public double[] getConnections() {
 		return connections;
 	}
-	
-	/**
-	 * Sets this neuron's connection at a specified index
-	 * 
-	 * @param value the new weight for the connection
-	 * @param index the index of the weight to change
-	 */
-	public void setConnection(double value, int index) {
-		connections[index] = value;
-	}
-	
-	/**
-	 * Sets this neuron's connections to the ones specified
-	 * 
-	 * @param connections the new weight values for this neuron's connections
-	 */
-	public void setConnections(double[] connections) {
-		this.connections = connections;
-	}
-	
+
 	/**
 	 * Gets this neuron's bias
 	 * 
@@ -182,23 +85,5 @@ public class Neuron {
 	 */
 	public double getBias() {
 		return bias;
-	}
-	
-	/**
-	 * Sets this neuron's bias to the specified value
-	 * 
-	 * @param value the desired value for this neuron's bias
-	 */
-	public void setBias(double value) {
-		this.bias = value;
-	}
-	
-	/**
-	 * Gets the previous output of this neuron
-	 * 
-	 * @return the previous output of this neuron. Returns 0 if none.
-	 */
-	public double getPrevOutput() {
-		return prevOutput;
 	}
 }

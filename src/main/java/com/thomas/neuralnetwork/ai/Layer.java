@@ -14,7 +14,7 @@ public class Layer {
 		for (int i = 0; i < numNeurons; i++) {
 			double[] connections = new double[numPreviousNeurons];
 			for (int o = 0; o < numPreviousNeurons; o++) {
-				connections[o] = Math.random()*20 - 10;
+				connections[o] = Math.random()*2 - 1;
 			}
 			neurons[i] = new Neuron(connections, Math.random()*2 - 1);
 		}
@@ -27,102 +27,6 @@ public class Layer {
 	 */
 	public Layer(Neuron[] neurons) {
 		this.neurons = neurons;
-	}
-
-	/**
-	 * Adds the index of the input to the corresponding neuron's bias
-	 * 
-	 * @param inputs an array of inputs used to modify the biases
-	 * @return the updated layer
-	 */
-	public Layer addToBiases(double[] inputs) {
-		for (int i = 0; i < inputs.length; i++) {
-			neurons[i].addToBias(inputs[i]);
-		}
-		return this;
-	}
-
-	/**
-	 * Adds the index of the input to the corresponding neuron's connection
-	 * 
-	 * @param inputs an array of inputs used to modify the weights of the layer's connections
-	 * @return the updated layer
-	 */
-	public Layer addToConnections(double[] inputs) {
-		for (int i = 0; i < neurons.length; i++) {
-			neurons[i].addToConnection(inputs[i], i);
-		}
-		return this;
-	}
-
-	/**
-	 * Subtracts the index of the reducer from the corresponding neuron's bias
-	 * 
-	 * @param reducer an array of inputs used to modify the biases
-	 * @return the updated layer
-	 */
-	public Layer subtractFromBiases(double[] reducer) {
-		for (int i = 0; i < neurons.length; i++) {
-			neurons[i].subtractFromBias(reducer[i]);
-		}
-		return this;
-	}
-
-	/**
-	 * Subtracts the input layer from this layer's connections
-	 * 
-	 * @param inputs the layer to subtract from this layer
-	 * @return the updated layer
-	 */
-	public Layer subtractFromConnections(Layer inputs) {
-		for (int i = 0; i < neurons.length; i++) {
-			for (int o = 0; o < neurons[i].getConnections().length; o++) {
-				neurons[i].addToConnection(inputs.getNeurons()[i].getConnections()[o], o);
-			}
-		}
-		return this;
-	}
-
-	/**
-	 * Multiplies the input layer with this layer's biases
-	 * 
-	 * @param l the layer to multiply this layers biases with
-	 * @return the updated layer
-	 */
-	public Layer multiplyBiases(Layer l) {
-		for (int i = 0; i < neurons.length; i++) {
-			neurons[i].multiplyBias(l.getNeurons()[i].getBias());
-		}
-		return this;
-	}
-
-	/**
-	 * Multiplies every bias in this layer by the input
-	 * 
-	 * @param d the double to multiply every bias by
-	 * @return the updated layer
-	 */
-	public Layer multiplyBiases(double d) {
-		for (Neuron neuron : neurons) {
-			neuron.multiplyBias(d);
-		}
-		return this;
-	}
-	
-	public Layer multiplyConnectionsByBiases(Layer l) {
-		for (Neuron neuron : neurons) {
-			neuron.multiplyConnections(l.biasAsArray());
-		}
-		  return this;
-	}
-	
-	public Layer multiplyBiasesByConnections(Layer l) {
-		  for (int i = 0; i < l.neurons.length; i++) {   
-			  for (int o = 0; o < neurons.length; o++) {
-				  neurons[o].multiplyBias(l.getNeurons()[i].getConnections()[o]);
-			  }
-		  }
-		  return this;
 	}
 
 	/**
@@ -140,8 +44,11 @@ public class Layer {
 
 	/**
 	 * Preforms a feed forward pass and returns the output
+	 * z = ∑(a*w) + b
+	 * unactivated output = accumulate(previous layer output neuron activated * weight connected to said neuron) + bias
 	 * 
 	 * @param inputs an array of inputs used to calculate the pass
+	 *
 	 * @return the result of the feed forward pass
 	 */
 	public double[] calculateInputs(double[] inputs) {
@@ -180,19 +87,6 @@ public class Layer {
 			result[i] = neurons[i].toArray();
 		}
 		return result;
-	}
-	
-	/**
-	 * Creates an array of this layer's biases
-	 * 
-	 * @return an array of this layer's biases
-	 */
-	public double[] biasAsArray() {
-		double[] output = new double[neurons.length];
-		for (int i = 0; i < neurons.length; i++) {
-			output[i] = neurons[i].getBias();
-		}
-		return output;
 	}
 
 	/**

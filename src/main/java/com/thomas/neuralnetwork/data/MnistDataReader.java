@@ -9,33 +9,25 @@ import java.util.List;
 
 public class MnistDataReader  {
     private final Path dataDir;
-    Pair<double[], double[]>[] trainData;
-    Pair<double[], double[]>[] testData;
+    List<Pair<double[], double[]>> trainData;
+    List<Pair<double[], double[]>> testData;
 
     public MnistDataReader(Path dataDir) {
         this.dataDir = dataDir;
     }
 
-    public Pair<double[], double[]>[] readData(String dataFilePath, String labelFilePath) throws IOException {
+    public List<Pair<double[], double[]>> readData(String dataFilePath, String labelFilePath) throws IOException {
         DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(dataFilePath)));
-        int magicNumber = dataInputStream.readInt();
+        dataInputStream.readInt(); // There is a "magic number" here that we do not need
         int numberOfItems = dataInputStream.readInt();
         int nRows = dataInputStream.readInt();
         int nCols = dataInputStream.readInt();
 
-        System.out.println("magic number is " + magicNumber);
-        System.out.println("number of items is " + numberOfItems);
-        System.out.println("number of rows is: " + nRows);
-        System.out.println("number of cols is: " + nCols);
-
         DataInputStream labelInputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(labelFilePath)));
-        int labelMagicNumber = labelInputStream.readInt();
+        labelInputStream.readInt(); // There is a "magic number" here that we do not need
         int numberOfLabels = labelInputStream.readInt();
 
-        System.out.println("labels magic number is: " + labelMagicNumber);
-        System.out.println("number of labels is: " + numberOfLabels);
-
-        Pair<double[], double[]>[] data = new Pair[numberOfItems];
+        List<Pair<double[], double[]>> data = new ArrayList<>(numberOfItems);
 
         assert numberOfItems == numberOfLabels;
 
@@ -50,7 +42,7 @@ public class MnistDataReader  {
                image[o] = ((double) dataInputStream.readUnsignedByte())/255;
             }
 
-            data[i] = new Pair<>(labelArray, image);
+            data.add(new Pair<>(labelArray, image));
         }
 
         dataInputStream.close();
@@ -85,11 +77,11 @@ public class MnistDataReader  {
         return true;
     }
 
-    public Pair<double[], double[]>[] getTrainData() {
+    public List<Pair<double[], double[]>> getTrainData() {
         return trainData;
     }
 
-    public Pair<double[], double[]>[] getTestData() {
+    public List<Pair<double[], double[]>> getTestData() {
         return testData;
     }
 }
