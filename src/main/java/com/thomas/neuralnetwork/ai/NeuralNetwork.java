@@ -1,6 +1,5 @@
 package com.thomas.neuralnetwork.ai;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -14,10 +13,10 @@ import org.jetbrains.annotations.Nullable;
 public class NeuralNetwork {
 	// TODO move settings into a properties file (https://www.baeldung.com/java-properties)
 	private static final double LEARNING_RATE = 0.01;
-	private static final int BATCH_SIZE = 500;
+	static final int BATCH_SIZE = 500;
 	private static final ActivationFunction ACTIVATION_FUNCTION = ActivationFunction.TANH;
 	private static final ActivationFunction OUTPUT_ACTIVATION_FUNCTION = ActivationFunction.SOFTMAX;
-	private static final LossFunction LOSS_FUNCTION = LossFunction.CROSS_ENTROPY_ERROR;
+	static final LossFunction LOSS_FUNCTION = LossFunction.CROSS_ENTROPY_ERROR;
 
 	private final Layer[] layers;
 
@@ -129,8 +128,6 @@ public class NeuralNetwork {
 	 * @return              A 3D array containing the desired changes for the neural network's weights and biases
 	 * 						The dimensions of the array are as follows: [layer][neuron][deltaWeights, deltaBias]
 	 */
-
-	// TODO look into Adam optimizer for the learning rate
 	public double[][][] backPropagate(double[] inputs, double[] outputs) {
 		/*
 		 Initialize an array to hold δL/δz for each layer
@@ -198,7 +195,7 @@ public class NeuralNetwork {
 		return deltaLayers;
 	}
 
-	private double[][][][] batchBackPropagate(double[][] inputs, double[][] outputs, int batchStart, int batchEnd, @Nullable ExecutorService pool) {
+	double[][][][] batchBackPropagate(double[][] inputs, double[][] outputs, int batchStart, int batchEnd, @Nullable ExecutorService pool) {
 		int numElements = batchEnd-batchStart;
 
 		List<double[][][]> desiredChanges = new ArrayList<>(numElements);
@@ -228,158 +225,10 @@ public class NeuralNetwork {
 	}
 
 	/**
-	 * Trains the neural network using given data and runs until the cost increases
-	 *
-	 * @param inputs        an array of inputs to train with
-	 * @param outputs       an array of outputs corresponding to the inputs
-	 * @param epochs        the number of times to run the backpropagation algorithm on the dataset
-	 *                      (set to 0 to run indefinitely)
-	 * @param noiseFreq     the probability that a number will be randomly altered
-	 * @param noiseStrength a multiplier how much a randomly selected number will be randomly altered
-	 *
-	 * @return the network with the lowest cost across every epoch
+	 * Gets the layers.
 	 */
-	public NeuralNetwork fit(double[][] inputs, double[][] outputs, int epochs, double noiseFreq, double noiseStrength) {
-		System.out.println("Starting training!");
-		NeuralNetwork bestNetwork = copy();
-
-		int epoch = 1;
-		ThreadPoolExecutor pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(8);
-
-		while (epochs == 0 || epoch <= epochs) {
-			System.out.println("------------------------------------------------------------");
-			System.out.println("Starting epoch " + epoch + "!");
-
-			double[][] predictions = new double[outputs.length][];
-
-			for (int a = 0; a < outputs.length; a++) {
-				predictions[a] = forwardPropagate(inputs[a]);
-			}
-
-			double costBefore = LOSS_FUNCTION.calculate(outputs, predictions);
-
-
-			// Perform backpropagation and weight updates in batches to reduce memory usage and improve speed
-			for (int batchNum = 0; batchNum < Math.ceilDiv(inputs.length, BATCH_SIZE); batchNum++) {
-				int batchStart = batchNum*BATCH_SIZE;
-				int batchEnd = Math.min((batchNum+1)*BATCH_SIZE, inputs.length);
-
-				System.out.println("Starting backpropagation batch #" + (batchNum+1) + " at index " + batchStart + " and ending at index " + batchEnd + ".");
-
-				double[][][][] desiredChanges = batchBackPropagate(inputs, outputs, batchStart, batchEnd, pool);
-				double[][][] averageDesiredChanges = desiredChanges[0];
-
-				for (int o = 1; o < desiredChanges.length; o++) {
-					for (int x = 0; x < desiredChanges[o].length; x++) {
-						for (int y = 0; y < desiredChanges[o][x].length; y++) {
-							for (int z = 0; z < desiredChanges[o][x][y].length; z++) {
-								averageDesiredChanges[x][y][z] += desiredChanges[o][x][y][z];
-							}
-						}
-					}
-				}
-
-				for (int x = 0; x < averageDesiredChanges.length; ++x) {
-					for (int y = 0; y < averageDesiredChanges[x].length; ++y) {
-						for (int z = 0; z < averageDesiredChanges[x][y].length; ++z) {
-							averageDesiredChanges[x][y][z] /= BATCH_SIZE;
-							if (Math.random() < noiseFreq) {
-								averageDesiredChanges[x][y][z] += (Math.random()*2 - 1)*noiseStrength;
-							}
-						}
-					}
-				}
-
-				// Update weights and biases based on desired changes
-				for (int x = 0; x < averageDesiredChanges.length; x++) {
-					for (int y = 0; y < averageDesiredChanges[x].length; y++) {
-						layers[x].getNeurons()[y].addToConnections(
-								Arrays.copyOfRange(averageDesiredChanges[x][y], 0, averageDesiredChanges[x][y].length - 1));
-						layers[x].getNeurons()[y]
-								.addToBias(averageDesiredChanges[x][y][averageDesiredChanges[x][y].length - 1]);
-					}
-				}
-			}
-
-
-			predictions = new double[outputs.length][];
-
-			for (int a = 0; a < outputs.length; a++) {
-				predictions[a] = forwardPropagate(inputs[a]);
-			}
-
-			double costAfter = LOSS_FUNCTION.calculate(outputs, predictions);
-
-				/*
-				Calculate change in cost
-				 */
-
-			String costChange;
-			if (costBefore == costAfter) {
-				costChange = "stayed the same";
-			} else {
-				double costDifference = Math.abs(costBefore - costAfter);
-				if (costBefore > costAfter) {
-					costChange = "decreased by " + costDifference;
-					bestNetwork = copy();
-				} else {
-					costChange = "increased by " + costDifference;
-				}
-			}
-
-				/*
-				Calculate accuracy
-				 */
-
-			double accuracy = 0;
-
-			for (int i = 0; i < predictions.length; ++i) {
-				int maxIndex = 0;
-				double maxValue = Double.NEGATIVE_INFINITY;
-
-				for (int j = 0; j < predictions[i].length; ++j) {
-					if (predictions[i][j] > maxValue) {
-						maxValue = predictions[i][j];
-						maxIndex = j;
-					}
-				}
-
-				if (outputs[i][maxIndex] == 1) ++accuracy;
-			}
-
-			accuracy /= outputs.length;
-			accuracy *= 100;
-
-				/*
-				Calculate certainty
-				 */
-
-			double certainty = 0;
-
-			for (int i = 0; i < outputs.length; ++i) {
-				for (int j = 0; j < outputs[i].length; ++j) {
-					if (outputs[i][j] == 1) {
-						certainty += predictions[i][j];
-					}
-				}
-			}
-
-			certainty /= outputs.length;
-			certainty *= 100;
-
-				/*
-				Print information about batch
-				 */
-
-			System.out.println("Cost " + costChange + "; new cost: " + costAfter + ".");
-			System.out.println("Accuracy after changes: " + new DecimalFormat("#.##").format(accuracy) + "%.");
-			System.out.println("Certainty after changes: " + new DecimalFormat("#.##").format(certainty) + "%.");
-			System.out.println("Epoch " + epoch++ + " complete.");
-		}
-
-		pool.close();
-
-		return bestNetwork;
+	public Layer[] getLayers() {
+		return layers;
 	}
 
 	/**

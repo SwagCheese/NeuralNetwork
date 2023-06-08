@@ -7,4 +7,6 @@ module com.thomas.neuralnetwork {
 
     opens com.thomas.neuralnetwork to javafx.fxml;
     exports com.thomas.neuralnetwork;
+    exports com.thomas.neuralnetwork.controllers;
+    opens com.thomas.neuralnetwork.controllers to javafx.fxml;
 }

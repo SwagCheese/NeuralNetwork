@@ -1,62 +1,36 @@
 package com.thomas.neuralnetwork;
 
-import com.thomas.neuralnetwork.ai.NeuralNetwork;
-import com.thomas.neuralnetwork.data.MnistDataReader;
-import javafx.util.Pair;
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Objects;
-import java.util.Scanner;
-
-public class Main {
+public class Main extends Application {
     public static void main(String[] args) {
-        System.out.println("Loading data!");
-        MnistDataReader dataReader = new MnistDataReader(Path.of("/home/bob/programming/java/NeuralNetwork/src/main/resources/data"));
+        launch(args);
+    }
 
-        if (!dataReader.loadMnistTestingData() || !dataReader.loadMnistTrainingData()) {
-            System.err.println("An error occurred while loading data.");
-            System.exit(1);
-        }
-
-        System.out.println("Done loading data.");
-
-        NeuralNetwork neuralNetwork = new NeuralNetwork(new int[]{784, 256, 128, 10});
-
-
-        double[][] trainInputs = dataReader.getTrainData().stream().map(Pair::getValue).toArray(double[][]::new);
-        double[][] trainOutputs = dataReader.getTrainData().stream().map(Pair::getKey).toArray(double[][]::new);
-
-        neuralNetwork = neuralNetwork.fit(trainInputs, trainOutputs, 200, 0, 0);
-
-        System.out.println("Preparing to save to file.");
-        File trained = new File("/home/bob/programming/java/NeuralNetwork/trained.nnet");
-        boolean writeToFile = true;
-
-        try {
-            if (!trained.createNewFile()) {
-                System.out.println("Warning! File exists. Overwrite? [y/N]");
-                Scanner s = new Scanner(System.in);
-                if (!s.next().matches("[Yy]([Ee][Ss])?")) {
-                    writeToFile = false;
-                }
-            }
-
-            if (writeToFile) {
-                BufferedWriter writer = new BufferedWriter(new FileWriter(trained));
-
-                System.out.print("Writing neural network to file... ");
-                writer.write(neuralNetwork.toString());
-                System.out.println("Done!");
-                writer.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
+    /**
+     * The main entry point for all JavaFX applications.
+     * The start method is called after the init method has returned,
+     * and after the system is ready for the application to begin running.
+     *
+     * <p>
+     * NOTE: This method is called on the JavaFX Application Thread.
+     * </p>
+     *
+     * @param primaryStage the primary stage for this application, onto which
+     *                     the application scene can be set.
+     *                     Applications may create other stages, if needed, but they will not be
+     *                     primary stages.
+     * @throws Exception if something goes wrong
+     */
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        Parent root = new FXMLLoader(getClass().getResource("/fxml/TrainingWindow.fxml")).load();
+        primaryStage.setTitle("MNIST Neural Network");
+        primaryStage.setScene(new Scene(root, 300, 400));
+        primaryStage.show();
     }
 }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.thomas.neuralnetwork.controllers.TrainingController">
+    <SplitPane dividerPositions="0.75" prefHeight="800.0" prefWidth="1200.0">
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="732.0" prefWidth="704.0">
+            <LineChart fx:id="lineChart" layoutX="15.0" layoutY="50.0" prefHeight="735.0" prefWidth="865.0">
+                <xAxis>
+                    <NumberAxis label="EPOCH" side="BOTTOM"/>
+                </xAxis>
+                <yAxis>
+                    <NumberAxis autoRanging="false" side="LEFT" />
+                </yAxis>
+            </LineChart>
+        </AnchorPane>
+        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="586.0" prefWidth="592.0">
+            <SplitPane dividerPositions="0.1" orientation="VERTICAL" prefHeight="798.0" prefWidth="296.0">
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0">
+                    <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="81.0" prefWidth="294.0" text="TRAINING" textAlignment="CENTER">
+                        <font>
+                            <Font size="36.0" />
+                        </font>
+                    </Label>
+                </AnchorPane>
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="134.0" prefWidth="232.0">
+                    <Button layoutX="14.0" layoutY="45.0" mnemonicParsing="false" onAction="#startTraining" prefHeight="26.0" prefWidth="264.0" text="Start" fx:id="startButton" />
+                    <Button layoutX="14.0" layoutY="87.0" mnemonicParsing="false" onAction="#pauseTraining" prefHeight="26.0" prefWidth="264.0" text="Pause" fx:id="pauseButton" />
+                    <Button fx:id="resetButton" layoutX="14.0" layoutY="128.0" mnemonicParsing="false" onAction="#resetNetwork" prefHeight="26.0" prefWidth="264.0" text="Reset" />
+                    <Label layoutX="15.0" layoutY="207.0" text="File Name (No Extension)" />
+                    <TextField fx:id="fileName" layoutX="15.0" layoutY="225.0" prefHeight="26.0" prefWidth="264.0" promptText="File Name" text="trained" />
+                    <Button fx:id="saveButton" layoutX="15.0" layoutY="262.0" mnemonicParsing="false" onAction="#saveToFile" prefHeight="26.0" prefWidth="264.0" text="Save To File" />
+                </AnchorPane>
+            </SplitPane>
+        </AnchorPane>
+    </SplitPane>
+</AnchorPane>
