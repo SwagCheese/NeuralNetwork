@@ -8,25 +8,23 @@ import javafx.fxml.FXML;
 import javafx.scene.chart.LineChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
-import javafx.util.Pair;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Objects;
 
 public class TrainingController {
-    private static final String saveButtonText = "Save To File";
-    private static final String saveButtonSavingText = "Save To File";
-    private static final String saveButtonWarningText = "WARNING: File Exists. Overwrite?";
-    private static final String resetButtonConfirmText = "Confirm Reset?";
-    private static final String resetButtonText = "Reset";
-    private static final String pauseButtonText = "Pause";
-    private static final String pauseButtonPausingText = "Finishing Epoch...";
-    private static final String startButtonText = "Start";
-    private static final String startButtonRunningText = "Training...";
+    private static final String SAVE_BUTTON_TEXT = "Save To File";
+    private static final String SAVE_BUTTON_SAVING_TEXT = "Saving To File";
+    private static final String SAVE_BUTTON_TRAINING_TEXT = "Pause the Training to Save.";
+    private static final String SAVE_BUTTON_EXISTS_TEXT = "WARNING: File Exists. Overwrite?";
+    private static final String RESET_BUTTON_CONFIRM_TEXT = "Confirm Reset?";
+    private static final String RESET_BUTTON_TEXT = "Reset";
+    private static final String PAUSE_BUTTON_TEXT = "Pause";
+    private static final String PAUSE_BUTTON_PAUSING_TEXT = "Finishing Epoch...";
+    private static final String START_BUTTON_TEXT = "Start";
+    private static final String START_BUTTON_RUNNING_TEXT = "Training...";
 
 
     @FXML
@@ -51,16 +49,14 @@ public class TrainingController {
     private NeuralNetwork neuralNetwork;
     private double[][] inputs;
     private double[][] outputs;
-    private boolean training = false;
+    private volatile boolean training = false;
 
 
     @FXML
-    private void initialize() {
+    private void initialize() throws IOException {
         // Initialize training data
-        MnistDataReader dataReader = new MnistDataReader(Path.of(Objects.requireNonNull(getClass().getResource("/data")).getPath()));
-        dataReader.loadMnistTrainingData();
-        inputs = dataReader.getTrainData().stream().map(Pair::getValue).toArray(double[][]::new);
-        outputs = dataReader.getTrainData().stream().map(Pair::getKey).toArray(double[][]::new);
+        inputs = MnistDataReader.readImageData(getClass().getResourceAsStream("/data/train-images.idx3-ubyte"));
+        outputs = MnistDataReader.readLabelData(getClass().getResourceAsStream("/data/train-labels.idx1-ubyte"));
 
         // Create series for the lines
         cost = new LineChart.Series<>();
@@ -81,12 +77,12 @@ public class TrainingController {
     }
 
     private void train() {
-        Platform.runLater(() -> startButton.setText(startButtonRunningText));
+        Platform.runLater(() -> startButton.setText(START_BUTTON_RUNNING_TEXT));
         training = true;
         neuralNetwork = trainer.start(inputs, outputs, 0, 0, 0);
 
         training = false;
-        Platform.runLater(() -> startButton.setText(startButtonText));
+        Platform.runLater(() -> startButton.setText(START_BUTTON_TEXT));
     }
 
 
@@ -101,43 +97,57 @@ public class TrainingController {
     public void pauseTraining() {
         training = false;
 
-        pauseButton.setText(pauseButtonPausingText);
+        pauseButton.setText(PAUSE_BUTTON_PAUSING_TEXT);
 
         new Thread(() -> {
             trainer.stop();
 
             Platform.runLater(() -> {
-                startButton.setText(startButtonText);
-                pauseButton.setText(pauseButtonText);
+                startButton.setText(START_BUTTON_TEXT);
+                pauseButton.setText(PAUSE_BUTTON_TEXT);
             });
         }).start();
     }
 
     @FXML
     public void resetNetwork() {
-        if (resetButton.getText().equals(resetButtonConfirmText)) {
+        if (resetButton.getText().equals(RESET_BUTTON_CONFIRM_TEXT)) {
             trainer.stop();
             trainer = new Trainer(new NeuralNetwork(new int[]{784, 256, 128, 10}));
             lineChart.setData(null);
 
-            resetButton.setText(resetButtonText);
+            resetButton.setText(RESET_BUTTON_TEXT);
         } else {
-            resetButton.setText(resetButtonConfirmText);
+            resetButton.setText(RESET_BUTTON_CONFIRM_TEXT);
         }
     }
 
     @FXML
     public void saveToFile() {
+        if (training) {
+            saveButton.setText(SAVE_BUTTON_TRAINING_TEXT);
+
+            new Thread(() -> {
+                while (training) {
+                    Thread.onSpinWait();
+                }
+
+                Platform.runLater(() -> {
+                    saveButton.setText(SAVE_BUTTON_TEXT);
+                });
+            }).start();
+        }
+
         System.out.println("Preparing to save to file.");
         File trained = new File(fileName.getText() + ".nnet");
 
         try {
-            if (saveButton.getText().equals(saveButtonText) && !trained.createNewFile()) {
-                saveButton.setText(saveButtonWarningText);
+            if (saveButton.getText().equals(SAVE_BUTTON_TEXT) && !trained.createNewFile()) {
+                saveButton.setText(SAVE_BUTTON_EXISTS_TEXT);
                 return;
             }
 
-            saveButton.setText(saveButtonSavingText);
+            saveButton.setText(SAVE_BUTTON_SAVING_TEXT);
 
             BufferedWriter writer = new BufferedWriter(new FileWriter(trained));
 
@@ -145,7 +155,7 @@ public class TrainingController {
             writer.write(neuralNetwork.toString());
             System.out.println("Done!");
             writer.close();
-            saveButton.setText(saveButtonText);
+            saveButton.setText(SAVE_BUTTON_TEXT);
         } catch (IOException e) {
             e.printStackTrace();
         }

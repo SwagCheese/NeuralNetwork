@@ -61,7 +61,7 @@ public class Trainer {
         training = true;
         NeuralNetwork bestNetwork = neuralNetwork.copy();
 
-        ThreadPoolExecutor pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(8);
+        ThreadPoolExecutor pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         while ((epochs == 0 || epoch <= epochs) && training) {
             System.out.println("------------------------------------------------------------");

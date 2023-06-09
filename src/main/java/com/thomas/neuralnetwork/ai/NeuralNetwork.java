@@ -8,12 +8,11 @@ import java.util.concurrent.*;
 import com.thomas.neuralnetwork.math.ActivationFunction;
 import com.thomas.neuralnetwork.math.ActivationLossCombos;
 import com.thomas.neuralnetwork.math.LossFunction;
-import org.jetbrains.annotations.Nullable;
 
 public class NeuralNetwork {
 	// TODO move settings into a properties file (https://www.baeldung.com/java-properties)
 	private static final double LEARNING_RATE = 0.01;
-	static final int BATCH_SIZE = 500;
+	static final int BATCH_SIZE = 5000;
 	private static final ActivationFunction ACTIVATION_FUNCTION = ActivationFunction.TANH;
 	private static final ActivationFunction OUTPUT_ACTIVATION_FUNCTION = ActivationFunction.SOFTMAX;
 	static final LossFunction LOSS_FUNCTION = LossFunction.CROSS_ENTROPY_ERROR;
@@ -195,7 +194,7 @@ public class NeuralNetwork {
 		return deltaLayers;
 	}
 
-	double[][][][] batchBackPropagate(double[][] inputs, double[][] outputs, int batchStart, int batchEnd, @Nullable ExecutorService pool) {
+	double[][][][] batchBackPropagate(double[][] inputs, double[][] outputs, int batchStart, int batchEnd, ExecutorService pool) {
 		int numElements = batchEnd-batchStart;
 
 		List<double[][][]> desiredChanges = new ArrayList<>(numElements);
