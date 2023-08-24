@@ -45,7 +45,7 @@ public class Layer {
 	/**
 	 * Preforms a feed forward pass and returns the output
 	 * z = ∑(a*w) + b
-	 * unactivated output = accumulate(previous layer output neuron activated * weight connected to said neuron) + bias
+	 * unactivated output = sum of (previous layer output neuron activated * weight connected to said neuron) + bias
 	 * 
 	 * @param inputs an array of inputs used to calculate the pass
 	 *

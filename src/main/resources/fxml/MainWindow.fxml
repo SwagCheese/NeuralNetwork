@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.thomas.neuralnetwork.controllers.MainController">
+   <VBox alignment="CENTER" prefHeight="400.0" prefWidth="600.0">
+      <Label text="MNIST Digit Classifier" />
+      <Label text="A simple neural network trained on the MNIST digits dataset." />
+      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0" spacing="40">
+         <Button onAction="#openTrainWindow" text="Train" prefWidth="120" prefHeight="30"/>
+         <Button onAction="#openDrawWindow" text="Draw" prefWidth="120" prefHeight="30"/>
+         <Button onAction="#openTestWindow" text="Test" prefWidth="120" prefHeight="30"/>
+      </HBox>
+   </VBox>
+</AnchorPane>

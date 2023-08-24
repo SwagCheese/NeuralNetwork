@@ -1,21 +1,22 @@
 package com.thomas.neuralnetwork.ai;
 
-import java.util.ArrayList;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.*;
 
-import com.thomas.neuralnetwork.math.ActivationFunction;
-import com.thomas.neuralnetwork.math.ActivationLossCombos;
-import com.thomas.neuralnetwork.math.LossFunction;
+import com.thomas.neuralnetwork.math.activation.ActivationFunction;
+import com.thomas.neuralnetwork.math.activation.LeakyReLUActivation;
+import com.thomas.neuralnetwork.math.activation.SoftmaxActivation;
+import com.thomas.neuralnetwork.math.loss.CrossEntropyLoss;
+import com.thomas.neuralnetwork.math.loss.LossFunction;
 
 public class NeuralNetwork {
 	// TODO move settings into a properties file (https://www.baeldung.com/java-properties)
-	private static final double LEARNING_RATE = 0.01;
-	static final int BATCH_SIZE = 5000;
-	private static final ActivationFunction ACTIVATION_FUNCTION = ActivationFunction.TANH;
-	private static final ActivationFunction OUTPUT_ACTIVATION_FUNCTION = ActivationFunction.SOFTMAX;
-	static final LossFunction LOSS_FUNCTION = LossFunction.CROSS_ENTROPY_ERROR;
+	private static final ActivationFunction ACTIVATION_FUNCTION = new LeakyReLUActivation();
+	private static final ActivationFunction OUTPUT_ACTIVATION_FUNCTION = new SoftmaxActivation();
+	public static final LossFunction LOSS_FUNCTION = new CrossEntropyLoss();
 
 	private final Layer[] layers;
 
@@ -121,11 +122,10 @@ public class NeuralNetwork {
 	/**
 	 * Performs back propagation on the neural network
 	 *
-	 * @param inputs        The inputs to use
-	 * @param outputs       The desired outputs
-	 *
-	 * @return              A 3D array containing the desired changes for the neural network's weights and biases
-	 * 						The dimensions of the array are as follows: [layer][neuron][deltaWeights, deltaBias]
+	 * @param inputs       The inputs to use
+	 * @param outputs      The desired outputs
+	 * @return A 3D array containing the desired changes for the neural network's weights and biases
+	 * The dimensions of the array are as follows: [layer][neuron][deltaWeights, deltaBias]
 	 */
 	public double[][][] backPropagate(double[] inputs, double[] outputs) {
 		/*
@@ -136,7 +136,7 @@ public class NeuralNetwork {
 		double[][] errorGradients = new double[layers.length][];
 
 		// Initialize the last layer's δL/δz
-		errorGradients[layers.length-1] = ActivationLossCombos.TANH_MSE.derivativeLossWRTPreActivation(outputs, forwardPropagateNoActivation(inputs, layers.length-1));
+		errorGradients[layers.length-1] = LOSS_FUNCTION.derive(OUTPUT_ACTIVATION_FUNCTION, outputs, forwardPropagateNoActivation(inputs, layers.length-1));
 
 		// Iterate through the layers, calculating δL/δz for each one
 		for (int l = layers.length-2; l >= 0; --l) {
@@ -180,10 +180,12 @@ public class NeuralNetwork {
 
 				double[] prevLayerOutput = forwardPropagate(inputs, l-1);
 				for (int i = 0; i < neurons[j].getConnections().length; i++) {
-					deltaWeightsBiases[i] = -LEARNING_RATE*prevLayerOutput[i]*errorGradients[l][j];
+					// δL/δw = prev layer activation * δL/δz
+					deltaWeightsBiases[i] = prevLayerOutput[i]*errorGradients[l][j];
 				}
 
-				deltaWeightsBiases[deltaWeightsBiases.length-1] = -LEARNING_RATE*errorGradients[l][j];
+				// δL/δb = δL/δz
+				deltaWeightsBiases[deltaWeightsBiases.length-1] = errorGradients[l][j];
 
 				deltaNeurons[j] = deltaWeightsBiases;
 			}
@@ -192,35 +194,6 @@ public class NeuralNetwork {
 		}
 
 		return deltaLayers;
-	}
-
-	double[][][][] batchBackPropagate(double[][] inputs, double[][] outputs, int batchStart, int batchEnd, ExecutorService pool) {
-		int numElements = batchEnd-batchStart;
-
-		List<double[][][]> desiredChanges = new ArrayList<>(numElements);
-		CountDownLatch latch = new CountDownLatch(numElements);
-
-		for (int i = batchStart; i < batchEnd; i++) {
-			if (pool == null) {
-				desiredChanges.add(backPropagate(inputs[i], outputs[i]));
-			} else {
-				int finalI = i;
-				pool.submit(() -> {
-					desiredChanges.add(backPropagate(inputs[finalI], outputs[finalI]));
-					latch.countDown();
-				});
-			}
-		}
-
-		if (pool != null) {
-			try {
-				latch.await();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-
-		return desiredChanges.toArray(new double[0][0][0][0]);
 	}
 
 	/**
@@ -268,6 +241,56 @@ public class NeuralNetwork {
 			layers[i] = Layer.fromArray(array[i]);
 		}
 		return new NeuralNetwork(layers);
+	}
+
+	/**
+	 * Creates a neural network from a file
+	 *
+	 * @param file A file containing a 3D array representation of a neural network
+	 * @return a n        assertEquals(original.toString(), fromFile.toString());
+ew neural network from the array
+	 */
+	public static NeuralNetwork fromFile(File file) {
+		try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+			StringBuilder sb = new StringBuilder();
+			String line;
+			while ((line = reader.readLine()) != null) {
+				sb.append(line);
+			}
+
+			double[][][] array = arrayFromString(sb.toString());
+
+			return fromArray(array);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+
+	public static double[][][] arrayFromString(String s) {
+
+		String[] innerArrayStrings = s.substring(3, s.length() - 3)
+				.split("]], \\[\\[");
+
+		double[][][] array = new double[innerArrayStrings.length][][];
+		for (int i = 0; i < innerArrayStrings.length; i++) {
+			String[] elements = innerArrayStrings[i].split("], \\[");
+
+			double[][] innerArray = new double[elements.length][];
+			for (int j = 0; j < elements.length; j++) {
+				String[] values = elements[j].split(", ");
+				double[] innerInnerArray = new double[values.length];
+				for (int k = 0; k < values.length; k++) {
+					innerInnerArray[k] = Double.parseDouble(values[k]);
+				}
+				innerArray[j] = innerInnerArray;
+			}
+
+			array[i] = innerArray;
+		}
+
+		return array;
 	}
 
 	@Override

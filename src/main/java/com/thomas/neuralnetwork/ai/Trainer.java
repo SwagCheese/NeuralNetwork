@@ -1,22 +1,31 @@
 package com.thomas.neuralnetwork.ai;
 
+import com.thomas.neuralnetwork.data.DataPoint;
+import com.thomas.neuralnetwork.math.learningRate.CyclicLearningRate;
+import com.thomas.neuralnetwork.math.learningRate.LearningRate;
 import javafx.application.Platform;
 import javafx.scene.chart.XYChart;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.Collections;
+import java.util.concurrent.*;
 
-import static com.thomas.neuralnetwork.ai.NeuralNetwork.BATCH_SIZE;
 import static com.thomas.neuralnetwork.ai.NeuralNetwork.LOSS_FUNCTION;
 
 public class Trainer {
+    private static final int BATCH_SIZE = 32;
 
-    private NeuralNetwork neuralNetwork;
+
+    private final NeuralNetwork neuralNetwork;
     private boolean training;
     private volatile boolean stoppedTraining;
     private int epoch;
+    private final ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private XYChart.Series<Number, Number> costSeries;
     private XYChart.Series<Number, Number> accuracySeries;
@@ -47,8 +56,7 @@ public class Trainer {
     /**
      * Trains the neural network using given data and runs until the cost increases
      *
-     * @param inputs        an array of inputs to train with
-     * @param outputs       an array of outputs corresponding to the inputs
+     * @param dataPoints    a list of data-points (inputs and outputs) to train on
      * @param epochs        the number of times to run the backpropagation algorithm on the dataset
      *                      (set to 0 to run indefinitely)
      * @param noiseFreq     the probability that a number will be randomly altered
@@ -56,34 +64,43 @@ public class Trainer {
      *
      * @return the network with the lowest cost across every epoch
      */
-    public NeuralNetwork start(double[][] inputs, double[][] outputs, int epochs, double noiseFreq, double noiseStrength) {
-        System.out.println("Starting training!");
-        training = true;
-        NeuralNetwork bestNetwork = neuralNetwork.copy();
+    public NeuralNetwork start(CopyOnWriteArrayList<DataPoint> dataPoints, int epochs, double noiseFreq, double noiseStrength) {
+        logger.info("Starting training!");
 
-        ThreadPoolExecutor pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        training = true;
+
+        NeuralNetwork bestNetwork = neuralNetwork.copy();
+        ThreadPoolExecutor pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
+        int batchesPerEpoch = Math.ceilDiv(dataPoints.size(), BATCH_SIZE);
+        LearningRate learningRate = new CyclicLearningRate(0.01, 0.1, 2, 1.5, 0.9, batchesPerEpoch);
 
         while ((epochs == 0 || epoch <= epochs) && training) {
-            System.out.println("------------------------------------------------------------");
-            System.out.println("Starting epoch " + epoch + "!");
+            double[][] inputs = dataPoints.stream().map(DataPoint::inputs).toArray(double[][]::new);
+            double[][] outputs = dataPoints.stream().map(DataPoint::outputs).toArray(double[][]::new);
 
-            double[][] predictions = new double[outputs.length][];
+            logger.info("");
+            logger.info("Starting epoch " + epoch + "!");
 
-            for (int a = 0; a < outputs.length; a++) {
+            Collections.shuffle(dataPoints);
+
+            double[][] predictions = new double[dataPoints.size()][];
+
+            for (int a = 0; a < dataPoints.size(); a++) {
                 predictions[a] = neuralNetwork.forwardPropagate(inputs[a]);
             }
 
             double costBefore = LOSS_FUNCTION.calculate(outputs, predictions);
 
-
             // Perform backpropagation and weight updates in batches to reduce memory usage and improve speed
-            for (int batchNum = 0; batchNum < Math.ceilDiv(inputs.length, BATCH_SIZE); batchNum++) {
-                int batchStart = batchNum*BATCH_SIZE;
-                int batchEnd = Math.min((batchNum+1)*BATCH_SIZE, inputs.length);
+            for (int batchNum = 0; batchNum < batchesPerEpoch; batchNum++) {
+                double lr = learningRate.get();
 
-                System.out.println("Starting backpropagation batch #" + (batchNum+1) + " at index " + batchStart + " and ending at index " + batchEnd + ".");
+                int batchStart = batchNum * BATCH_SIZE;
+                int batchEnd = Math.min((batchNum + 1) * BATCH_SIZE, dataPoints.size());
 
-                double[][][][] desiredChanges = neuralNetwork.batchBackPropagate(inputs, outputs, batchStart, batchEnd, pool);
+                logger.debug("Starting backpropagation batch #" + (batchNum + 1) + " at index " + batchStart + " and ending at index " + batchEnd + ".");
+
+                double[][][][] desiredChanges = batchBackPropagate(dataPoints, batchStart, batchEnd);
                 double[][][] averageDesiredChanges = desiredChanges[0];
 
                 for (int o = 1; o < desiredChanges.length; o++) {
@@ -100,8 +117,12 @@ public class Trainer {
                     for (int y = 0; y < averageDesiredChanges[x].length; ++y) {
                         for (int z = 0; z < averageDesiredChanges[x][y].length; ++z) {
                             averageDesiredChanges[x][y][z] /= BATCH_SIZE;
+
+                            // Must be negative in order to traverse the loss in the "downhill" direction
+                            averageDesiredChanges[x][y][z] *= -lr;
+
                             if (Math.random() < noiseFreq) {
-                                averageDesiredChanges[x][y][z] += (Math.random()*2 - 1)*noiseStrength;
+                                averageDesiredChanges[x][y][z] += (Math.random() * 2 - 1) * noiseStrength;
                             }
                         }
                     }
@@ -118,18 +139,17 @@ public class Trainer {
                 }
             }
 
+            predictions = new double[dataPoints.size()][];
 
-            predictions = new double[outputs.length][];
-
-            for (int a = 0; a < outputs.length; a++) {
+            for (int a = 0; a < dataPoints.size(); a++) {
                 predictions[a] = neuralNetwork.forwardPropagate(inputs[a]);
             }
 
             double costAfter = LOSS_FUNCTION.calculate(outputs, predictions);
 
-				/*
-				Calculate change in cost
-				 */
+            /*
+            Calculate change in cost
+             */
 
             String costChange;
             if (costBefore == costAfter) {
@@ -144,36 +164,30 @@ public class Trainer {
                 }
             }
 
-				/*
-				Calculate accuracy
-				 */
+            /*
+            Calculate accuracy
+             */
 
             double accuracy = 0;
 
             for (int i = 0; i < predictions.length; ++i) {
-                int maxIndex = 0;
-                double maxValue = Double.NEGATIVE_INFINITY;
-
                 for (int j = 0; j < predictions[i].length; ++j) {
-                    if (predictions[i][j] > maxValue) {
-                        maxValue = predictions[i][j];
-                        maxIndex = j;
+                    if (outputs[i][j] == 1 && predictions[i][j] > 0.5) {
+                        ++accuracy;
                     }
                 }
-
-                if (outputs[i][maxIndex] == 1) ++accuracy;
             }
 
-            accuracy /= outputs.length;
+            accuracy /= dataPoints.size();
             accuracy *= 100;
 
-				/*
-				Calculate certainty
-				 */
+            /*
+            Calculate certainty
+             */
 
             double certainty = 0;
 
-            for (int i = 0; i < outputs.length; ++i) {
+            for (int i = 0; i < dataPoints.size(); ++i) {
                 for (int j = 0; j < outputs[i].length; ++j) {
                     if (outputs[i][j] == 1) {
                         certainty += predictions[i][j];
@@ -181,21 +195,23 @@ public class Trainer {
                 }
             }
 
-            certainty /= outputs.length;
+            certainty /= dataPoints.size();
             certainty *= 100;
 
 			/*
 			Print information about batch and update chart
 			 */
 
-            System.out.println("Cost " + costChange + "; new cost: " + costAfter + ".");
-            System.out.println("Accuracy after changes: " + new DecimalFormat("#.##").format(accuracy) + "%.");
-            System.out.println("Certainty after changes: " + new DecimalFormat("#.##").format(certainty) + "%.");
+            logger.info("Cost " + costChange + "; new cost: " + costAfter + ".");
+            logger.info("Accuracy after changes: " + new DecimalFormat("#.##").format(accuracy) + "%.");
+            logger.info("Certainty after changes: " + new DecimalFormat("#.##").format(certainty) + "%.");
 
             // We have epoch as an argument to create an effectively final copy
             updateChart(epoch, costAfter, accuracy, certainty);
 
-            System.out.println("Epoch " + epoch++ + " complete.");
+            learningRate.update(epoch);
+
+            logger.info("Epoch " + (epoch++) + " complete.");
         }
 
         pool.close();
@@ -204,6 +220,30 @@ public class Trainer {
         stoppedTraining = true;
 
         return bestNetwork;
+    }
+
+    double[][][][] batchBackPropagate(CopyOnWriteArrayList<DataPoint> dataPoints, int batchStart, int batchEnd) {
+        int numElements = batchEnd-batchStart;
+
+        double[][][][] desiredChanges = new double[numElements][][][];
+
+        CountDownLatch latch = new CountDownLatch(numElements);
+
+        for (int i = batchStart; i < batchEnd; i++) {
+            int finalI = i;
+            pool.submit(() -> {
+                desiredChanges[finalI - batchStart] = neuralNetwork.backPropagate(dataPoints.get(finalI).inputs(), dataPoints.get(finalI).outputs());
+                latch.countDown();
+            });
+        }
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        return desiredChanges;
     }
 
     public void stop() {
@@ -215,13 +255,5 @@ public class Trainer {
         while (!stoppedTraining) {
             Thread.onSpinWait();
         }
-    }
-
-    public boolean isTraining() {
-        return training;
-    }
-
-    public void setNeuralNetwork(NeuralNetwork neuralNetwork) {
-        this.neuralNetwork = neuralNetwork;
     }
 }

@@ -54,7 +54,7 @@ public class Neuron {
 	 */
 	public static Neuron fromArray(double[] array) {
 		Neuron temp = new Neuron(new double[array.length-1], array[array.length-1]);
-		System.arraycopy(array, 1, temp.connections, 0, array.length - 1);
+		System.arraycopy(array, 0, temp.connections, 0, array.length - 1);
 		return temp;
 	}
 

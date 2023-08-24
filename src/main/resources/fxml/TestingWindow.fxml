@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.thomas.neuralnetwork.controllers.TestingController">
+   <VBox alignment="CENTER" layoutY="-14.0" prefHeight="400.0" prefWidth="600.0" spacing="10">
+      <HBox alignment="CENTER" prefHeight="52.0" prefWidth="600.0" spacing="10">
+         <Button fx:id="loadNetworkButton" onAction="#loadNetwork" prefHeight="35" prefWidth="165" text="Load Network From File" />
+         <Button fx:id="testButton" onAction="#test" prefHeight="35" prefWidth="165" text="Test" />
+      </HBox>
+      <Label fx:id="output" text="No Data" />
+   </VBox>
+</AnchorPane>
