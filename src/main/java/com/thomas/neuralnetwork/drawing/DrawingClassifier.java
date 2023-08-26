@@ -1,6 +1,7 @@
 package com.thomas.neuralnetwork.drawing;
 
 import com.thomas.neuralnetwork.ai.NeuralNetwork;
+import com.thomas.neuralnetwork.data.MnistDataReader;
 import com.thomas.neuralnetwork.data.UserData;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -36,20 +37,19 @@ public class DrawingClassifier {
 
     private static final int CANVAS_WIDTH = 250;
     private static final int CANVAS_HEIGHT = 250;
-    private static final int STROKE_WIDTH = 18;
+    private static final int STROKE_WIDTH = 15;
 
     private Canvas canvas;
     private GraphicsContext graphicsContext;
     private Label lblResult;
     private ImageView imageView;
     private TextField userLabel;
+    private Button btnLoadNetwork;
 
     private int[][] lastClassified;
 
 
     public void start(Stage stage) {
-        neuralNetwork = NeuralNetwork.fromFile(new File("trained.nnet"));
-
         stage.setTitle("Drawing Classifier");
 
         imageView = new ImageView();
@@ -72,6 +72,9 @@ public class DrawingClassifier {
         Button btnClear = new Button("Clear");
         btnClear.setOnAction(event -> clearCanvas());
 
+        btnLoadNetwork = new Button("Load Network");
+        btnLoadNetwork.setOnAction(event -> loadNetwork(MnistDataReader.chooseFile(event)));
+
         userLabel = new TextField();
 
         Button btnAddDatapoint = new Button("Add Datapoint");
@@ -82,7 +85,7 @@ public class DrawingClassifier {
         HBox hbBottom = new HBox(10, canvas, imageView);
         hbBottom.setAlignment(Pos.CENTER);
 
-        HBox buttonBox = new HBox(10, btnClassify, btnClear);
+        HBox buttonBox = new HBox(10, btnLoadNetwork, btnClassify, btnClear);
         HBox.setMargin(btnClassify, new Insets(10));
         HBox.setMargin(btnClear, new Insets(10));
         buttonBox.setAlignment(Pos.CENTER);
@@ -102,6 +105,13 @@ public class DrawingClassifier {
 
         stage.setScene(new Scene(root));
         stage.show();
+    }
+
+    private void loadNetwork(File file) {
+        if (file == null) return;
+
+        neuralNetwork = NeuralNetwork.fromFile(file);
+        btnLoadNetwork.setText("Network \"" + file.getName().replace(".nnet", "") + "\" loaded.");
     }
 
     private void addDatapoint() {
@@ -145,6 +155,11 @@ public class DrawingClassifier {
 
 
     private void classify() {
+        if (neuralNetwork == null) {
+            lblResult.setText("Load a network first.");
+            return;
+        }
+
         lastClassified = Arrays.stream(getGrayscaleValues()).map(d -> Arrays.stream(d).mapToInt(d1 -> (int) (d1 * 255)).toArray()).toArray(int[][]::new);
         double[] grayscaleValues = Arrays.stream(getGrayscaleValues()).flatMapToDouble(Arrays::stream).toArray();
 

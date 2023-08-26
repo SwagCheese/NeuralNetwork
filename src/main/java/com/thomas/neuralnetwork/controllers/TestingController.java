@@ -5,10 +5,8 @@ import com.thomas.neuralnetwork.data.DataPoint;
 import com.thomas.neuralnetwork.data.MnistDataReader;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,13 +38,7 @@ public class TestingController {
 
     @FXML
     public void loadNetwork(ActionEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Neural Network Files (*.nnet)", "*.nnet");
-
-        fileChooser.getExtensionFilters().add(extensionFilter);
-        fileChooser.setInitialDirectory(new File("."));
-
-        File file = fileChooser.showOpenDialog(((Node) event.getSource()).getScene().getWindow());
+        File file = MnistDataReader.chooseFile(event);
 
         if (file == null) return; // No file has been selected.
 

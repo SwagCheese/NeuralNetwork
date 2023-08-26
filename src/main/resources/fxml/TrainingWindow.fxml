@@ -13,7 +13,7 @@
                     <NumberAxis label="EPOCH" side="BOTTOM" />
                 </xAxis>
                 <yAxis>
-                    <NumberAxis autoRanging="false" tickUnit="10" side="LEFT"/>
+                    <NumberAxis autoRanging="false" side="LEFT"/>
                 </yAxis>
             </LineChart>
         </AnchorPane>

@@ -7,19 +7,16 @@ import com.thomas.neuralnetwork.data.MnistDataReader;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.Node;
 import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
-import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class TrainingController {
@@ -78,18 +75,8 @@ public class TrainingController {
                 getClass().getResourceAsStream("/data/train-labels.idx1-ubyte")
         ));
 
-        // Create series for the lines
-        cost = new LineChart.Series<>();
-        cost.setName("Cost");
-        accuracy = new LineChart.Series<>();
-        accuracy.setName("%Accuracy");
-        certainty = new LineChart.Series<>();
-        certainty.setName("%Certainty");
-
-        // Add series to the chart
-        lineChart.getData().add(cost);
-        lineChart.getData().add(accuracy);
-        lineChart.getData().add(certainty);
+        // Create series for the lines and add to chart
+        setupLineChart();
     }
 
     private void train() {
@@ -137,17 +124,35 @@ public class TrainingController {
     @FXML
     public void resetNetwork() {
         if (resetButton.getText().equals(RESET_BUTTON_CONFIRM_TEXT)) {
-            trainer.stop();
-            int[] layersParsed = Arrays.stream(("784, " + hiddenLayers.getText() + ", 10").split(",")).mapToInt(Integer::valueOf).toArray();
-            trainer = new Trainer(new NeuralNetwork(layersParsed), cost, accuracy, certainty);
-            cost.setData(null);
-            accuracy.setData(null);
-            certainty.setData(null);
+            if (trainer != null) {
+                trainer.stop();
+                int[] layersParsed = Arrays.stream(("784, " + hiddenLayers.getText() + ", 10").split(",")).mapToInt(s -> Integer.parseInt(s.trim())).toArray();
+                trainer = new Trainer(new NeuralNetwork(layersParsed), cost, accuracy, certainty);
+            }
+
+            lineChart.getData().clear();
+            setupLineChart();
 
             resetButton.setText(RESET_BUTTON_TEXT);
         } else {
             resetButton.setText(RESET_BUTTON_CONFIRM_TEXT);
         }
+    }
+
+    private void setupLineChart() {
+        cost = new LineChart.Series<>();
+        cost.setName("Cost");
+        accuracy = new LineChart.Series<>();
+        accuracy.setName("%Accuracy");
+        certainty = new LineChart.Series<>();
+        certainty.setName("%Certainty");
+
+        lineChart.getData().add(cost);
+        lineChart.getData().add(accuracy);
+        lineChart.getData().add(certainty);
+
+        // Prevent a weird bug where the upper bound increases by 10 every time the chart is reset
+        ((NumberAxis) lineChart.getXAxis()).setUpperBound(100);
     }
 
     @FXML
@@ -226,16 +231,11 @@ public class TrainingController {
 
     @FXML
     public void loadNetwork(ActionEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("Neural Network Files (*.nnet)", "*.nnet");
-
-        fileChooser.getExtensionFilters().add(extensionFilter);
-        fileChooser.setInitialDirectory(new File("."));
-
-        File file = fileChooser.showOpenDialog(((Node) event.getSource()).getScene().getWindow());
+        File file = MnistDataReader.chooseFile(event);
 
         if (file == null) return; // No file has been selected.
 
+        fileName.setText(file.getName().replace(".nnet", ""));
         trainer = new Trainer(NeuralNetwork.fromFile(file), cost, accuracy, certainty);
     }
 
